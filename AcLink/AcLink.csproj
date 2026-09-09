@@ -1,0 +1,69 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Single .NET Framework 4.8 build. Loads natively in Revit 2022–2024 and
+         via the .NET-Framework compatibility shim in Revit 2025–2026 (.NET 8).
+         A .NET 8 build would NOT load in 2022–2024, so net48 is the portable choice. -->
+    <TargetFramework>net48</TargetFramework>
+    <ProjectGuid>{8BA4D2A3-8A77-49A7-83FA-B25FCD333F5A}</ProjectGuid>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <PlatformTarget>x64</PlatformTarget>
+    <AssemblyName>AcLink</AssemblyName>
+    <RootNamespace>AcLink</RootNamespace>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+
+    <!-- Assembly metadata — SDK-style projects auto-generate the corresponding
+         attributes (GenerateAssemblyInfo defaults to true), no AssemblyInfo.cs needed. -->
+    <AssemblyTitle>AC Link</AssemblyTitle>
+    <Description>Link indoor and outdoor AC units into a system</Description>
+    <Company>Vixeldorf</Company>
+    <Product>AC Link</Product>
+    <Copyright>Copyright © 2026</Copyright>
+
+    <!-- Single source of truth for the version: ..\version.json (repo root).
+         Drives AssemblyVersion/FileVersion here, and the MSI's ProductVersion
+         binds to this DLL's file version in Product.wxs — one place to bump. -->
+    <VersionJsonPath>$(MSBuildThisFileDirectory)..\version.json</VersionJsonPath>
+    <AcLinkVersion Condition="Exists('$(VersionJsonPath)')">$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(VersionJsonPath)')), '&quot;version&quot;\s*:\s*&quot;([^&quot;]+)&quot;').Groups[1].Value)</AcLinkVersion>
+    <AcLinkVersion Condition="'$(AcLinkVersion)' == ''">1.0.0</AcLinkVersion>
+    <Version>$(AcLinkVersion)</Version>
+    <AssemblyVersion>$(AcLinkVersion).0</AssemblyVersion>
+    <FileVersion>$(AcLinkVersion).0</FileVersion>
+  </PropertyGroup>
+
+  <!-- Reference the OLDEST supported Revit API (2022). Private=false → resolved at
+       runtime against whichever Revit hosts the add-in. Using only APIs present in
+       2022 keeps the single DLL valid across 2022–2027. -->
+  <ItemGroup>
+    <Reference Include="RevitAPI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2022\RevitAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="RevitAPIUI">
+      <HintPath>C:\Program Files\Autodesk\Revit 2022\RevitAPIUI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- AdWindows: ribbon introspection to avoid duplicate "TES BIM Guide" buttons
+         when several TES add-ins share the "TES" tab. Not shipped — Revit provides it. -->
+    <Reference Include="AdWindows">
+      <HintPath>C:\Program Files\Autodesk\Revit 2022\AdWindows.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\aclink_32.png" />
+    <EmbeddedResource Include="Resources\aclink_16.png" />
+    <EmbeddedResource Include="Resources\web_icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\version.json" />
+  </ItemGroup>
+
+</Project>
