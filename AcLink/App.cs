@@ -34,43 +34,36 @@ namespace AcLink
             // Shared F1 (contextual) help target for every button.
             ContextualHelp help = new ContextualHelp(ContextualHelpType.Url, HelpUrl);
 
+            // Three small (16x16) buttons stacked in one column.
             var buttonData = new PushButtonData(
-                "AcLinkBtn", "AC\nLink", assemblyPath, "AcLink.AcLinkCommand")
+                "AcLinkBtn", "AC Link", assemblyPath, "AcLink.AcLinkCommand")
             {
-                ToolTip    = "Link indoor and outdoor AC units into a system",
-                LargeImage = LoadImage("aclink_32.png")
+                ToolTip = "Link indoor and outdoor AC units into a system",
+                Image   = LoadImage("aclink_16.png")
             };
             buttonData.SetContextualHelp(help);
-            panel.AddItem(buttonData);
-
-            panel.AddSeparator();
 
             var createIndoorBtn = new PushButtonData(
-                "AcLinkCreateIndoorBtn", "Indoor Unit\nfrom Space", assemblyPath, "AcLink.CreateIndoorFromSpaceCommand")
+                "AcLinkCreateIndoorBtn", "Indoor from Space", assemblyPath, "AcLink.CreateIndoorFromSpaceCommand")
             {
-                ToolTip    = "Pick a Space and place an indoor unit sized to its cooling load",
-                LargeImage = LoadImage("aclink_32.png")
+                ToolTip = "Pick a Space and place an indoor unit sized to its cooling load",
+                Image   = LoadImage("aclink_indoor_16.png")
             };
             createIndoorBtn.SetContextualHelp(help);
-            panel.AddItem(createIndoorBtn);
 
             var createOutdoorBtn = new PushButtonData(
-                "AcLinkCreateOutdoorBtn", "Outdoor Unit\n+ System", assemblyPath, "AcLink.CreateOutdoorSystemCommand")
+                "AcLinkCreateOutdoorBtn", "Outdoor + System", assemblyPath, "AcLink.CreateOutdoorSystemCommand")
             {
-                ToolTip    = "Place an outdoor unit sized for the selected indoor units and link them into a system",
-                LargeImage = LoadImage("aclink_32.png")
+                ToolTip = "Place an outdoor unit sized for the selected indoor units and link them into a system",
+                Image   = LoadImage("aclink_outdoor_16.png")
             };
             createOutdoorBtn.SetContextualHelp(help);
-            panel.AddItem(createOutdoorBtn);
 
-            var mappingBtn = new PushButtonData(
-                "AcLinkCatalogMappingBtn", "Catalog\nMappings", assemblyPath, "AcLink.CatalogMappingCommand")
-            {
-                ToolTip    = "Configure indoor/outdoor family + catalog mappings used by unit creation",
-                LargeImage = LoadImage("aclink_32.png")
-            };
-            mappingBtn.SetContextualHelp(help);
-            panel.AddItem(mappingBtn);
+            panel.AddStackedItems(buttonData, createIndoorBtn, createOutdoorBtn);
+
+            // Catalog Mappings has no ribbon button of its own — it's reached from
+            // the "Catalog Mappings…" button on the main AC Link window (MainDialog),
+            // same as the other two catalog commands.
 
             const string bimGuideKey = "Vixeldorf.BimGuide.Added";
             RibbonPanel aboutPanel = GetOrCreatePanel(application, tabName, AboutPanelName);

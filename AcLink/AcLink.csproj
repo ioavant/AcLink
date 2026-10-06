@@ -59,6 +59,8 @@
   <ItemGroup>
     <EmbeddedResource Include="Resources\aclink_32.png" />
     <EmbeddedResource Include="Resources\aclink_16.png" />
+    <EmbeddedResource Include="Resources\aclink_indoor_16.png" />
+    <EmbeddedResource Include="Resources\aclink_outdoor_16.png" />
     <EmbeddedResource Include="Resources\web_icon.png" />
   </ItemGroup>
 
