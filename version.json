@@ -1,5 +1,5 @@
 {
-  "version": "1.1.0",
+  "version": "1.2.0",
   "downloadUrl": "https://github.com/ioavant/AcLink/releases/latest/download/AcLinkSetup.msi",
-  "releaseNotes": "Catalog-driven unit creation: place indoor units sized from a Space's cooling load and outdoor units sized from the selected indoor units, both picked from configurable CSV catalogs, with automatic system creation. Copy-protection now promotes a fully copied system (e.g. a design pasted onto another floor) into its own new system with a fresh, sequential name instead of just detaching it."
+  "releaseNotes": "Two assemblies now: net48 for Revit 2022-2024 and net8.0-windows for Revit 2025+ (fixes instability on Revit 2025.5, which runs on .NET 10). Ribbon is three compact stacked buttons; catalog mappings are reached from the main window. Includes catalog-driven unit creation and promotion of fully copied systems into new systems."
 }
