@@ -1,0 +1,87 @@
+<Project>
+
+  <!--
+    AC Link — product side of the branding configuration.
+
+    What a BRAND is (ribbon tab, About button, help URL, installer artwork,
+    update policy) lives in ..\_branding\<Brand>\brand.props and is shared by
+    every add-in. This file only describes THIS product, plus the handful of
+    values that legitimately differ per brand for it.
+
+    Switch brands with:  dotnet build -p:Brand=Tes     (or -p:Brand=Vixeldorf)
+  -->
+
+  <PropertyGroup>
+    <BrandProduct>AcLink</BrandProduct>
+    <BrandProductDisplayName>AC Link</BrandProductDisplayName>
+    <BrandProductDescription>Link indoor and outdoor AC units into a system.</BrandProductDescription>
+
+    <!-- Namespace the generated Brand class is emitted into. -->
+    <BrandInfoNamespace>AcLink</BrandInfoNamespace>
+    <!-- IExternalApplication class the .addin manifests point at. -->
+    <BrandAppClassName>AcLink.App</BrandAppClassName>
+
+    <BrandSupportedRevitVersions>2022;2023;2024;2025;2026;2027</BrandSupportedRevitVersions>
+    <!-- Revit 2025+ load the net8.0-windows assembly; 2022-2024 keep net48. -->
+    <BrandNet8MinRevitVersion>2025</BrandNet8MinRevitVersion>
+
+    <!-- The add-in project folder; the engine derives the built DLL path from it. -->
+    <BrandProjectDir>$(MSBuildThisFileDirectory)AcLink\</BrandProjectDir>
+  </PropertyGroup>
+
+  <!-- ================================================================= -->
+  <!-- Vixeldorf — the build already in the field (v1.0.x / 1.1.0).       -->
+  <!--                                                                    -->
+  <!-- UpgradeCode, AddInId and the CoreFiles component GUID are lifted   -->
+  <!-- verbatim from the shipped Installer\Product.wxs. They must never   -->
+  <!-- change.                                                            -->
+  <!--                                                                    -->
+  <!-- The per-version component GUIDs are regenerated: the manifests     -->
+  <!-- they carry are renamed (AcLink_22.addin -> Vixeldorf_AcLink_22     -->
+  <!-- .addin), and Windows Installer component rules require a new GUID  -->
+  <!-- whenever a component's keypath changes.                            -->
+  <!-- ================================================================= -->
+  <PropertyGroup Condition=" '$(Brand)' == 'Vixeldorf' ">
+    <!-- Vixeldorf products each get their own panel on the shared tab. -->
+    <BrandRibbonPanel>AC Link</BrandRibbonPanel>
+
+    <BrandUpgradeCode>49394B6C-783B-406B-A231-9DC0C64CB4E5</BrandUpgradeCode>
+    <BrandAddInId>12282B23-D4DE-4DF0-BDAF-A390FE5EC30A</BrandAddInId>
+    <BrandCoreFilesGuid>4C8B7A79-6F9C-4171-9311-BE1D4B0EA715</BrandCoreFilesGuid>
+  </PropertyGroup>
+
+  <ItemGroup Condition=" '$(Brand)' == 'Vixeldorf' ">
+    <BrandAddinComponent Include="2022"><Guid>8356C741-2838-47E3-A8BE-B8114773E244</Guid></BrandAddinComponent>
+    <BrandAddinComponent Include="2023"><Guid>80DD3242-949C-43CF-8EB0-D201FEB55593</Guid></BrandAddinComponent>
+    <BrandAddinComponent Include="2024"><Guid>CF72B7D3-8FC6-413D-A535-68241C36DFD8</Guid></BrandAddinComponent>
+    <BrandAddinComponent Include="2025"><Guid>BDAA8C42-26C0-4978-AFBB-820D86871AA5</Guid></BrandAddinComponent>
+    <BrandAddinComponent Include="2026"><Guid>ADCA47EB-D832-4BF8-8DF9-AEF5CB2CDBF0</Guid></BrandAddinComponent>
+    <BrandAddinComponent Include="2027"><Guid>467AE08B-D0D4-4195-9F3B-BF6373631EF0</Guid></BrandAddinComponent>
+  </ItemGroup>
+
+  <!-- ================================================================= -->
+  <!-- TES — new for AC Link (never shipped under TES), so fresh GUIDs,   -->
+  <!-- never shared with Vixeldorf or any other product; the two MSIs     -->
+  <!-- install side by side.                                              -->
+  <!-- ================================================================= -->
+  <PropertyGroup Condition=" '$(Brand)' == 'Tes' ">
+    <!-- All TES add-ins share one "Tools" panel on the TES tab. -->
+    <BrandRibbonPanel>Tools</BrandRibbonPanel>
+
+    <BrandUpgradeCode>82AD869F-479D-4F62-991B-EF148D22FD58</BrandUpgradeCode>
+    <BrandAddInId>860CBDA9-7C35-4C3A-9A52-7C6B120A7008</BrandAddInId>
+
+    <!-- Auto-generated per install location. -->
+    <BrandCoreFilesGuid>*</BrandCoreFilesGuid>
+  </PropertyGroup>
+
+  <ItemGroup Condition=" '$(Brand)' == 'Tes' ">
+    <BrandAddinComponent Include="2022"><Guid>D68BD5A9-F8C8-4FE0-B8B6-4DFD7D267AB9</Guid></BrandAddinComponent>
+    <BrandAddinComponent Include="2023"><Guid>6BAD1708-C58F-4B1A-AA8F-D98188A975EB</Guid></BrandAddinComponent>
+    <BrandAddinComponent Include="2024"><Guid>41A0D5D1-64B0-4E7D-ADBF-31CAECBA8E78</Guid></BrandAddinComponent>
+    <BrandAddinComponent Include="2025"><Guid>CE02F033-A61C-4A3C-A51D-6109347AAED7</Guid></BrandAddinComponent>
+    <BrandAddinComponent Include="2026"><Guid>DEE4389D-46AF-432A-A3E3-D38977ED8CB2</Guid></BrandAddinComponent>
+    <BrandAddinComponent Include="2027"><Guid>7516D8B9-C4C1-41FF-A5D0-E4BFF54CC533</Guid></BrandAddinComponent>
+  </ItemGroup>
+
+</Project>

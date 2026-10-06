@@ -1,5 +1,5 @@
 using System;
-using System.Net;
+using System.Net.Http;
 using System.Reflection;
 using System.Threading.Tasks;
 
@@ -37,10 +37,13 @@ namespace AcLink
 
         private static void DoCheck()
         {
-            using (var client = new WebClient())
+            // HttpClient rather than WebClient: WebClient is obsolete (SYSLIB0014) in
+            // the net8 build. This already runs on a background task, so blocking on
+            // the result is no worse than the synchronous call it replaces.
+            using (var client = new HttpClient())
             {
-                client.Headers[HttpRequestHeader.UserAgent] = "AcLink-UpdateChecker/1.0";
-                string json = client.DownloadString(VersionUrl);
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("AcLink-UpdateChecker/1.0");
+                string json = client.GetStringAsync(VersionUrl).GetAwaiter().GetResult();
                 var info = ParseJson(json);
                 if (info?.Version == null) return;
 

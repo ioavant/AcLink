@@ -1,6 +1,7 @@
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
+using Autodesk.Revit.UI.Events;
 using System;
 using System.Diagnostics;
 using System.Reflection;
@@ -9,30 +10,27 @@ using System.Windows.Media.Imaging;
 namespace AcLink
 {
     /// <summary>
-    /// AC Link ribbon application — a Vixeldorf product. Shares the "Vixeldorf"
-    /// ribbon tab and "About"/Help Center button with other Vixeldorf add-ins
-    /// (e.g. Link Section Box) using the same AppDomain-flag dedup convention,
-    /// so only one Help Center button appears regardless of load order.
+    /// AC Link ribbon application. Everything brand-specific (tab, panel, About
+    /// button, help URL, update policy) comes from the generated <c>Brand</c>
+    /// class — see ..\branding.props and ..\..\_branding.
     /// </summary>
     public class App : IExternalApplication
     {
-        private const string TabName = "Vixeldorf";
-        private const string AboutPanelName = "About";
-        private const string HelpUrl = "https://www.vixeldorf.com";
+        private UIControlledApplication _uiApp;
 
         public Result OnStartup(UIControlledApplication application)
         {
             // Fire-and-forget: never blocks startup, never throws into Revit.
-            UpdateChecker.CheckInBackground();
+            if (Brand.UpdateCheckEnabled) UpdateChecker.CheckInBackground();
 
-            string tabName = TabName;
-            CreateTabIfNotExists(application, tabName);
+            string tab = Brand.RibbonTab;
+            try { application.CreateRibbonTab(tab); } catch { /* tab exists — OK */ }
 
-            RibbonPanel panel = GetOrCreatePanel(application, tabName, "AC Link");
+            RibbonPanel panel = GetOrCreatePanel(application, tab, Brand.RibbonPanel);
             string assemblyPath = Assembly.GetExecutingAssembly().Location;
 
             // Shared F1 (contextual) help target for every button.
-            ContextualHelp help = new ContextualHelp(ContextualHelpType.Url, HelpUrl);
+            ContextualHelp help = new ContextualHelp(ContextualHelpType.Url, Brand.HelpUrl);
 
             // Three small (16x16) buttons stacked in one column.
             var buttonData = new PushButtonData(
@@ -65,42 +63,95 @@ namespace AcLink
             // the "Catalog Mappings…" button on the main AC Link window (MainDialog),
             // same as the other two catalog commands.
 
-            const string bimGuideKey = "Vixeldorf.BimGuide.Added";
-            RibbonPanel aboutPanel = GetOrCreatePanel(application, tabName, AboutPanelName);
-            if (AppDomain.CurrentDomain.GetData(bimGuideKey) == null)
+            // ── About / Help button ───────────────────────────────────────────
+            // Every add-in of this brand shares one "About" panel holding a single help
+            // button, so only the first one loaded gets to add it. Two independent
+            // checks, because neither alone covers every case:
+            //   • an AppDomain data slot — all add-ins in a Revit process share one
+            //     AppDomain, and this catches siblings regardless of load order (the
+            //     Vixeldorf convention);
+            //   • a scan of the live ribbon via AdWindows — RibbonPanel.GetItems() only
+            //     sees items the CURRENT add-in added, so this is the only way to notice
+            //     a button placed by an older add-in of the same brand (the TES
+            //     convention).
+            RibbonPanel aboutPanel = GetOrCreatePanel(application, tab, Brand.AboutPanel);
+            bool alreadyAdded = AppDomain.CurrentDomain.GetData(Brand.AboutFlagKey) != null
+                                || AboutButtonExistsOnRibbon(tab, Brand.AboutPanel);
+            if (!alreadyAdded)
             {
-                AppDomain.CurrentDomain.SetData(bimGuideKey, true);
+                AppDomain.CurrentDomain.SetData(Brand.AboutFlagKey, true);
                 var webButtonData = new PushButtonData(
-                    "Vixeldorf_HelpCenter", "Help\nCenter",
+                    Brand.AboutButtonId, Brand.AboutButtonText,
                     assemblyPath, "AcLink.OpenWebPageCommand");
                 webButtonData.SetContextualHelp(help);
-                PushButton webButton = aboutPanel.AddItem(webButtonData) as PushButton;
-                if (webButton != null)
+                if (aboutPanel.AddItem(webButtonData) is PushButton webButton)
                 {
-                    webButton.ToolTip = "Open the Vixeldorf Help Center web page.";
+                    webButton.ToolTip = Brand.AboutButtonTooltip;
                     webButton.LargeImage = LoadImage("web_icon.png");
                 }
             }
 
             // The "About" panel must stay at the very end of the tab even when other
-            // Vixeldorf add-ins add their own panels later. There is no supported API to
-            // reorder ribbon panels; ApplicationInitialized can fire before the ribbon is
-            // fully built (and never fires when the add-in loads after Revit has started),
-            // so we reorder on the first Idling tick — raised once, when the ribbon exists.
-            _uiApp = application;
-            application.Idling += OnFirstIdling;
+            // add-ins add their own panels later. There is no supported API to reorder
+            // ribbon panels; ApplicationInitialized can fire before the ribbon is fully
+            // built (and never fires when the add-in loads after Revit has started), so
+            // we reorder on the first Idling tick — raised once, when the ribbon exists.
+            if (Brand.PinAboutPanelToEnd)
+            {
+                _uiApp = application;
+                application.Idling += OnFirstIdling;
+            }
 
             return Result.Succeeded;
         }
 
         public Result OnShutdown(UIControlledApplication application) => Result.Succeeded;
 
-        private UIControlledApplication _uiApp;
-
-        private void OnFirstIdling(object sender, Autodesk.Revit.UI.Events.IdlingEventArgs e)
+        private void OnFirstIdling(object sender, IdlingEventArgs e)
         {
             _uiApp.Idling -= OnFirstIdling;   // one-shot: only the first idle
             MoveAboutPanelToEnd();
+        }
+
+        private static bool AboutButtonExistsOnRibbon(string tabTitle, string panelTitle)
+        {
+            try
+            {
+                var ribbon = Autodesk.Windows.ComponentManager.Ribbon;
+                if (ribbon == null) return false;
+
+                foreach (Autodesk.Windows.RibbonTab ribbonTab in ribbon.Tabs)
+                {
+                    if (!string.Equals(ribbonTab.Title, tabTitle, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    foreach (Autodesk.Windows.RibbonPanel ribbonPanel in ribbonTab.Panels)
+                    {
+                        if (ribbonPanel.Source == null ||
+                            !string.Equals(ribbonPanel.Source.Title, panelTitle, StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        foreach (Autodesk.Windows.RibbonItem item in ribbonPanel.Source.Items)
+                            if (ItemTextMatchesAboutButton(item)) return true;
+                    }
+                }
+            }
+            catch { /* AdWindows unavailable — fall through and add the button */ }
+            return false;
+        }
+
+        private static bool ItemTextMatchesAboutButton(Autodesk.Windows.RibbonItem item)
+        {
+            if (item == null) return false;
+            string text = item.Text ?? string.Empty;
+            if (text.IndexOf(Brand.AboutMatchText, StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+
+            if (item is Autodesk.Windows.RibbonRowPanel rowPanel)
+                foreach (Autodesk.Windows.RibbonItem child in rowPanel.Items)
+                    if (ItemTextMatchesAboutButton(child)) return true;
+
+            return false;
         }
 
         // Uses the (unofficial but long-stable) Autodesk.Windows ribbon model to move
@@ -110,17 +161,18 @@ namespace AcLink
         {
             try
             {
-                Autodesk.Windows.RibbonControl ribbon = Autodesk.Windows.ComponentManager.Ribbon;
+                var ribbon = Autodesk.Windows.ComponentManager.Ribbon;
                 if (ribbon == null) return;
 
                 foreach (Autodesk.Windows.RibbonTab tab in ribbon.Tabs)
                 {
-                    if (tab.Title != TabName && tab.Id != TabName) continue;
+                    if (tab.Title != Brand.RibbonTab && tab.Id != Brand.RibbonTab) continue;
 
                     Autodesk.Windows.RibbonPanel about = null;
                     foreach (Autodesk.Windows.RibbonPanel p in tab.Panels)
                         if (p.Source != null && p.Source.Title != null &&
-                            p.Source.Title.Trim().Equals(AboutPanelName, StringComparison.OrdinalIgnoreCase)) { about = p; break; }
+                            p.Source.Title.Trim().Equals(Brand.AboutPanel, StringComparison.OrdinalIgnoreCase))
+                        { about = p; break; }
 
                     if (about != null && tab.Panels[tab.Panels.Count - 1] != about)
                     {
@@ -133,34 +185,39 @@ namespace AcLink
             catch { /* Never let a ribbon-cosmetics tweak interfere with loading. */ }
         }
 
-        private void CreateTabIfNotExists(UIControlledApplication app, string tabName)
+        private static RibbonPanel GetOrCreatePanel(UIControlledApplication app, string tab, string name)
         {
-            try { app.CreateRibbonTab(tabName); }
-            catch (Autodesk.Revit.Exceptions.ArgumentException) { /* tab exists — OK */ }
+            foreach (RibbonPanel p in app.GetRibbonPanels(tab))
+                if (p.Name == name) return p;
+            return app.CreateRibbonPanel(tab, name);
         }
 
-        private RibbonPanel GetOrCreatePanel(UIControlledApplication app, string tabName, string panelName)
+        private static BitmapImage LoadImage(string resourceName)
         {
-            foreach (RibbonPanel p in app.GetRibbonPanels(tabName))
-                if (p.Name == panelName) return p;
-            return app.CreateRibbonPanel(tabName, panelName);
-        }
+            try
+            {
+                var asm = Assembly.GetExecutingAssembly();
+                var stream = asm.GetManifestResourceStream($"AcLink.Resources.{resourceName}");
+                if (stream == null)
+                    foreach (string n in asm.GetManifestResourceNames())
+                        if (n.EndsWith(resourceName, StringComparison.OrdinalIgnoreCase))
+                        { stream = asm.GetManifestResourceStream(n); break; }
 
-        private BitmapImage LoadImage(string resourceName)
-        {
-            string fullName = $"AcLink.Resources.{resourceName}";
-            var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(fullName);
-            if (stream == null) return null;
-            var image = new BitmapImage();
-            image.BeginInit();
-            image.StreamSource = stream;
-            image.CacheOption  = BitmapCacheOption.OnLoad;
-            image.EndInit();
-            return image;
+                if (stream == null) return null;
+
+                var image = new BitmapImage();
+                image.BeginInit();
+                image.StreamSource = stream;
+                image.CacheOption  = BitmapCacheOption.OnLoad;
+                image.EndInit();
+                image.Freeze();
+                return image;
+            }
+            catch { return null; }
         }
     }
 
-    // ── Vixeldorf Help Center command — shared convention across Vixeldorf add-ins ─
+    // ── Vixeldorf / TES Help Center command — shared convention across add-ins ─
 
     [Transaction(TransactionMode.Manual)]
     public class OpenWebPageCommand : IExternalCommand
@@ -169,7 +226,7 @@ namespace AcLink
         {
             try
             {
-                Process.Start(new ProcessStartInfo("https://www.vixeldorf.com") { UseShellExecute = true });
+                Process.Start(new ProcessStartInfo(Brand.HelpUrl) { UseShellExecute = true });
                 return Result.Succeeded;
             }
             catch (Exception ex)

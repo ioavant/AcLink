@@ -4,3 +4,8 @@
 *.user
 *.suo
 .claude/
+
+# Branding engine — generated at build time, never commit
+AcLink/Properties/BrandInfo.cs
+AcLink/Properties/VersionInfo.cs
+Installer/brand.generated.wxi

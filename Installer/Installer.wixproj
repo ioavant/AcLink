@@ -1,28 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" InitialTargets="EnsureWixToolsetInstalled" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- A .wixproj does not import Microsoft.Common.props, so Directory.Build.props
+       has to be pulled in by hand; it is what defines $(Brand) and everything the
+       branding engine derives from it. -->
+  <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props"
+          Condition=" '$(_BrandingPropsImported)' != 'true' " />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <!-- x64: in an x86 package ProgramFiles64Folder resolves to Program Files (x86),
+         which is not where Revit 2027 looks for add-in manifests. -->
     <Platform Condition=" '$(Platform)' == '' ">x64</Platform>
     <ProductVersion>3.10</ProductVersion>
     <ProjectGuid>D510EF94-47E8-410B-A0D7-1FE571222EA9</ProjectGuid>
     <SchemaVersion>2.0</SchemaVersion>
+    <!-- Vixeldorf keeps the plain AcLinkSetup.msi: version.json's downloadUrl
+         (releases/latest/download/AcLinkSetup.msi) depends on that exact name. -->
     <OutputName>AcLinkSetup</OutputName>
+    <OutputName Condition=" '$(Brand)' == 'Tes' ">AcLinkSetup_TES</OutputName>
     <OutputType>Package</OutputType>
+    <!-- ICE61 fires because MajorUpgrade/@AllowSameVersionUpgrades makes the
+         upgrade range overlap this product's own version. That overlap is the
+         point — see the comment in Product.wxs. -->
+    <SuppressIces>ICE61</SuppressIces>
+    <!-- Otherwise the solution build pushes Platform=x64 onto the AnyCPU csproj. -->
+    <DefineSolutionProperties>false</DefineSolutionProperties>
   </PropertyGroup>
+  <!-- Brand-scoped so both MSIs can be built back to back. -->
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
-    <OutputPath>bin\$(Configuration)\</OutputPath>
-    <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+    <OutputPath>bin\$(Configuration)\$(Brand)\</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(Brand)\</IntermediateOutputPath>
     <DefineConstants>Debug</DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x64' ">
-    <OutputPath>bin\$(Configuration)\</OutputPath>
-    <IntermediateOutputPath>obj\$(Configuration)\</IntermediateOutputPath>
+    <OutputPath>bin\$(Configuration)\$(Brand)\</OutputPath>
+    <IntermediateOutputPath>obj\$(Configuration)\$(Brand)\</IntermediateOutputPath>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Product.wxs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="UI" />
   </ItemGroup>
   <ItemGroup>
     <WixExtension Include="WixUIExtension">
@@ -31,6 +45,12 @@
     </WixExtension>
   </ItemGroup>
   <ItemGroup>
+    <!-- The csproj is multi-targeted, and a .wixproj is not SDK-aware: it cannot
+         negotiate a target framework, so it would ask the OUTER build for
+         GetTargetPath (MSB4057). Pin the reference to net48. Both frameworks are
+         still built — by the csproj's own node in the solution; this reference
+         only orders the builds. Product.wxs sources each DLL by absolute path
+         from the generated .wxi, not from the reference's outputs. -->
     <ProjectReference Include="..\AcLink\AcLink.csproj">
       <Name>AcLink</Name>
       <Project>{8BA4D2A3-8A77-49A7-83FA-B25FCD333F5A}</Project>
@@ -38,6 +58,7 @@
       <DoNotHarvest>True</DoNotHarvest>
       <RefProjectOutputGroups>Binaries;Content;Satellites</RefProjectOutputGroups>
       <RefTargetDir>INSTALLFOLDER</RefTargetDir>
+      <AdditionalProperties>TargetFramework=net48</AdditionalProperties>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(WixTargetsPath)" Condition=" '$(WixTargetsPath)' != '' " />
@@ -45,4 +66,7 @@
   <Target Name="EnsureWixToolsetInstalled" Condition=" '$(WixTargetsImported)' != 'true' ">
     <Error Text="The WiX Toolset v3.11 build tools must be installed to build this project. To download the WiX Toolset, see https://wixtoolset.org/releases/v3.11/stable" />
   </Target>
+  <!-- Generates the .addin manifests and brand.generated.wxi this project compiles. -->
+  <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.targets"
+          Condition=" '$(_BrandingTargetsImported)' != 'true' " />
 </Project>

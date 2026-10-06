@@ -67,6 +67,15 @@ namespace AcLink
                 try
                 {
                     string dir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                    if (string.IsNullOrEmpty(dir)) return null;
+
+                    // The net8 build (Revit 2025+) lives one level deeper, in "net8\".
+                    // The settings belong to the PRODUCT folder so every Revit version
+                    // reads and writes the same file.
+                    string leaf = Path.GetFileName(dir.TrimEnd(Path.DirectorySeparatorChar));
+                    if (string.Equals(leaf, "net8", StringComparison.OrdinalIgnoreCase))
+                        dir = Path.GetDirectoryName(dir.TrimEnd(Path.DirectorySeparatorChar));
+
                     return string.IsNullOrEmpty(dir) ? null : Path.Combine(dir, FileName);
                 }
                 catch { return null; }
